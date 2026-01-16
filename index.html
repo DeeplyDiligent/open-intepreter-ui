@@ -12,11 +12,16 @@
             box-sizing: border-box;
         }
         
+        html {
+            height: 100%;
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: #0d1117;
             color: #c9d1d9;
-            height: 100vh;
+            height: 100vh; /* Fallback */
+            height: 100dvh; /* Dynamic viewport height - adjusts for keyboard */
             display: flex;
             flex-direction: column;
         }
@@ -25,20 +30,31 @@
             max-width: 1200px;
             margin: 0 auto;
             width: 100%;
-            height: 100%;
+            flex: 1;
             display: flex;
             flex-direction: column;
             padding: 20px;
+            min-height: 0;
         }
         
         h1 {
             color: #58a6ff;
             margin-bottom: 20px;
             font-size: 24px;
+            flex-shrink: 0;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-shrink: 0;
         }
         
         .chat-container {
             flex: 1;
+            min-height: 0;
             background: #161b22;
             border: 1px solid #30363d;
             border-radius: 6px;
@@ -220,6 +236,7 @@
         .input-container {
             display: flex;
             gap: 10px;
+            flex-shrink: 0;
         }
         
         #messageInput {
@@ -294,11 +311,94 @@
             border-color: #58a6ff;
             color: #58a6ff;
         }
+        
+        .settings-btn {
+            padding: 8px 16px;
+            background: #21262d;
+        }
+        
+        .settings-btn:hover {
+            background: #30363d;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 24px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            font-size: 18px;
+            font-weight: 600;
+            color: #58a6ff;
+            margin-bottom: 16px;
+        }
+        
+        .modal-label {
+            display: block;
+            color: #8b949e;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .modal textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 12px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            font-size: 14px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            resize: vertical;
+            margin-bottom: 16px;
+        }
+        
+        .modal textarea:focus {
+            outline: none;
+            border-color: #58a6ff;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .modal-buttons button {
+            padding: 10px 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🤖 DeepChat</h1>
+        <div class="header">
+            <h1>🤖 DeepChat</h1>
+            <button class="settings-btn" onclick="openSettings()">⚙️ Settings</button>
+        </div>
 
         <div id="chatContainer" class="chat-container"></div>
         
@@ -312,16 +412,74 @@
             <button id="sendBtn" onclick="sendMessage()">Send</button>
         </div>
     </div>
+    
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">⚙️ Custom Instructions</div>
+            <label class="modal-label">Set custom instructions for the AI assistant:</label>
+            <textarea id="customInstructions" placeholder="Example: You are a helpful coding assistant. Always explain your answers clearly and provide examples."></textarea>
+            <div class="modal-buttons">
+                <button onclick="closeSettings()">Cancel</button>
+                <button onclick="saveSettings()" style="background: #238636;">Save</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         const chatContainer = document.getElementById('chatContainer');
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const customInstructionsInput = document.getElementById('customInstructions');
         
         let currentMessage = null;
         let currentCode = '';
         let currentConsole = '';
         let currentText = '';
+        
+        // Load custom instructions from localStorage on page load
+        function loadCustomInstructions() {
+            const instructions = localStorage.getItem('customInstructions') || '';
+            customInstructionsInput.value = instructions;
+            
+            // Send to backend
+            if (instructions) {
+                fetch(`/set-instructions?instructions=${encodeURIComponent(instructions)}`)
+                    .catch(e => console.error('Error setting instructions:', e));
+            }
+        }
+        
+        function openSettings() {
+            settingsModal.classList.add('active');
+        }
+        
+        function closeSettings() {
+            settingsModal.classList.remove('active');
+        }
+        
+        function saveSettings() {
+            const instructions = customInstructionsInput.value;
+            localStorage.setItem('customInstructions', instructions);
+            
+            // Send to backend
+            fetch(`/set-instructions?instructions=${encodeURIComponent(instructions)}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Instructions saved:', data);
+                    closeSettings();
+                })
+                .catch(e => {
+                    console.error('Error saving instructions:', e);
+                    alert('Error saving instructions');
+                });
+        }
+        
+        // Close modal when clicking outside
+        settingsModal.addEventListener('click', function(e) {
+            if (e.target === settingsModal) {
+                closeSettings();
+            }
+        });
         
         function sendMessage() {
             const message = messageInput.value.trim();
@@ -450,6 +608,32 @@
             div.textContent = text;
             return div.innerHTML;
         }
+        
+        // Handle keyboard visibility on mobile
+        function updateHeight() {
+            if (window.visualViewport) {
+                // Check if scrolled to bottom before resize
+                const wasAtBottom = chatContainer.scrollHeight - chatContainer.scrollTop <= chatContainer.clientHeight + 50;
+                
+                const viewport = window.visualViewport;
+                document.body.style.height = viewport.height + 'px';
+                
+                // If was at bottom, scroll to bottom after resize
+                if (wasAtBottom) {
+                    setTimeout(() => {
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    }, 100);
+                }
+            }
+        }
+        
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', updateHeight);
+            updateHeight();
+        }
+        
+        // Load custom instructions on page load
+        loadCustomInstructions();
         
         // Focus input on load
         messageInput.focus();

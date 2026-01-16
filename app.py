@@ -11,7 +11,13 @@ app = FastAPI()
 
 @app.get("/")
 def root():
+    interpreter.messages = []
     return FileResponse("index.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+@app.get("/set-instructions")
+def set_instructions(instructions: str = ""):
+    interpreter.custom_instructions = instructions
+    return {"status": "success", "instructions": instructions}
 
 @app.get("/chat")
 def chat_endpoint(msg: str):
