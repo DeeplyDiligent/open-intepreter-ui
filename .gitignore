@@ -1,1 +1,4 @@
-venv
+venv__pycache__/
+awesome-copilot/
+google-cloud-sdk/
+google-cloud-sdk-*.tar.gz
