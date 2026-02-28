@@ -1029,8 +1029,19 @@
                 currentToolBlock = document.createElement('details');
                 currentToolBlock.className = 'tool-block';
                 currentToolBlock.setAttribute('open', '');
-                const argsHtml = data.args ? `<div class="tool-args">${escapeHtml(data.args)}</div>` : '';
-                currentToolBlock.innerHTML = `<summary>🔧 <code>${escapeHtml(data.tool)}</code><span class="tool-status">⏳</span></summary>${argsHtml}`;
+                
+                // For report_intent, extract the intent and show it as the title
+                let toolTitle = `🔧 <code>${escapeHtml(data.tool)}</code>`;
+                let argsHtml = data.args ? `<div class="tool-args">${escapeHtml(data.args)}</div>` : '';
+                if (data.tool === 'report_intent' && data.args) {
+                    const intentMatch = data.args.match(/'intent':\s*'([^']+)'/);
+                    if (intentMatch) {
+                        toolTitle = `💭 ${escapeHtml(intentMatch[1])}`;
+                        argsHtml = ''; // Hide args for report_intent
+                    }
+                }
+                
+                currentToolBlock.innerHTML = `<summary>${toolTitle}<span class="tool-status">⏳</span></summary>${argsHtml}`;
                 if (currentMessage) currentMessage.appendChild(currentToolBlock);
                 pendingToolBlocks.push({tool: data.tool, id: data.id, element: currentToolBlock});
             } else if (data.type === 'tool_end') {
@@ -1042,7 +1053,8 @@
                 if (block) {
                     const status = block.querySelector('.tool-status');
                     if (status) status.textContent = '✓';
-                    if (data.result) {
+                    // Hide result for report_intent
+                    if (data.result && data.tool !== 'report_intent') {
                         const resultDiv = document.createElement('div');
                         resultDiv.className = 'tool-result';
                         resultDiv.textContent = data.result;
