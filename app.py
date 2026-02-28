@@ -2,13 +2,13 @@ import asyncio
 import json
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, FileResponse
-from copilot import CopilotClient
+from copilot import CopilotClient, PermissionHandler
 from contextlib import asynccontextmanager
 
 async def create_session(app):
     """Create a new Copilot session and register the event handler."""
     loop = asyncio.get_event_loop()
-    session_config = {"model": "claude-sonnet-4.6", "streaming": True}
+    session_config = {"model": "claude-sonnet-4.6", "streaming": True, "on_permission_request": PermissionHandler.approve_all}
     instructions = getattr(app.state, "custom_instructions", "")
     if instructions:
         session_config["system_message"] = {"mode": "append", "content": instructions}
